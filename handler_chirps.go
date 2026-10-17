@@ -59,3 +59,36 @@ func (cfg *apiConfig) handlerChirpsCreate(w http.ResponseWriter, r *http.Request
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(response)
 }
+
+func (cfg *apiConfig) handlerChirpsRead(w http.ResponseWriter, r *http.Request) {
+	chirps, err := cfg.data.GetChirps(r.Context())
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Error retrieving chirps: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	response := make([]struct {
+		ID        string `json:"id"`
+		Body      string `json:"body"`
+		UserID    string `json:"user_id"`
+		CreatedAt string `json:"created_at"`
+		UpdatedAt string `json:"updated_at"`
+	}, len(chirps))
+
+	for i, chirp := range chirps {
+		response[i] = struct {
+			ID        string `json:"id"`
+			Body      string `json:"body"`
+			UserID    string `json:"user_id"`
+			CreatedAt string `json:"created_at"`
+			UpdatedAt string `json:"updated_at"`
+		}{
+			ID:        chirp.ID.String(),
+			Body:      chirp.Content,
+			UserID:    chirp.UserID.String(),
+			CreatedAt: chirp.CreatedAt.String(),
+			UpdatedAt: chirp.UpdatedAt.String(),
+		}
+	}
+	respondWithJSON(w, http.StatusOK, response)
+}

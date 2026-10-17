@@ -1,4 +1,4 @@
--- CreateChirp :one
+-- CreateChirp :many
 INSERT INTO chirps (id, created_at, updated_at, user_id, content)
 VALUES (
     gen_random_uuid(),
@@ -8,3 +8,4 @@ VALUES (
     $2
 )
 RETURNING *;
+
