@@ -16,11 +16,12 @@ type Response struct {
 	ID        string `json:"id"`
 }
 type LoginResponse struct {
-	CreatedAt string `json:"created_at"`
-	UpdatedAt string `json:"updated_at"`
-	Token     string `json:"token"`
-	Email     string `json:"email"`
-	ID        string `json:"id"`
+	CreatedAt    string `json:"created_at"`
+	UpdatedAt    string `json:"updated_at"`
+	Token        string `json:"token"`
+	RefreshToken string `json:"refresh_token"`
+	Email        string `json:"email"`
+	ID           string `json:"id"`
 }
 
 func (cfg *apiConfig) handlerUsersCreate(w http.ResponseWriter, r *http.Request) {
@@ -55,21 +56,14 @@ func (cfg *apiConfig) handlerUsersCreate(w http.ResponseWriter, r *http.Request)
 
 func (cfg *apiConfig) handlerLogin(w http.ResponseWriter, r *http.Request) {
 	var params struct {
-		Email            string `json:"email"`
-		Password         string `json:"password"`
-		ExpiresInSeconds int    `json:"expires_in_seconds"`
+		Email    string `json:"email"`
+		Password string `json:"password"`
 	}
-	expiresIn := time.Hour
-	if params.ExpiresInSeconds != 0 {
-		expiresIn = time.Duration(params.ExpiresInSeconds) * time.Second
-	}
+	expiresInJWT := time.Hour
+	exporesInAT := time.Hour * 24 * 60
 	err := json.NewDecoder(r.Body).Decode(&params)
 	if err != nil {
 		respondWithError(w, 400, "Invalid request payload", err)
-		return
-	}
-	if err != nil {
-		respondWithError(w, 401, "Invalid authorization header", err)
 		return
 	}
 	response, err := cfg.data.GetUserByEmail(r.Context(), params.Email)
@@ -87,13 +81,29 @@ func (cfg *apiConfig) handlerLogin(w http.ResponseWriter, r *http.Request) {
 		respondWithError(w, 401, "Invalid credentials", nil)
 		return
 	}
-	authToken, err := auth.MakeJWT(response.ID, cfg.secret_key, expiresIn)
+	newToken := auth.MakeRefreshToken()
+	CreateTokenParams := database.AddTokenParams{
+		UserID:    response.ID,
+		Token:     newToken,
+		ExpiresAt: time.Now().Add(exporesInAT),
+	}
+	_, err = cfg.data.AddToken(r.Context(), CreateTokenParams)
+	if err != nil {
+		respondWithError(w, 500, "Failed to create token", err)
+		return
+	}
+	authToken, err := auth.MakeJWT(response.ID, cfg.secret_key, expiresInJWT)
+	if err != nil {
+		respondWithError(w, 500, "Failed to create token", err)
+		return
+	}
 	user := LoginResponse{
-		CreatedAt: response.CreatedAt.String(),
-		UpdatedAt: response.UpdatedAt.String(),
-		Token:     authToken,
-		Email:     response.Email,
-		ID:        response.ID.String(),
+		CreatedAt:    response.CreatedAt.String(),
+		UpdatedAt:    response.UpdatedAt.String(),
+		Token:        authToken,
+		RefreshToken: newToken,
+		Email:        response.Email,
+		ID:           response.ID.String(),
 	}
 	respondWithJSON(w, 200, user)
 }
