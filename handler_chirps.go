@@ -92,3 +92,34 @@ func (cfg *apiConfig) handlerChirpsRead(w http.ResponseWriter, r *http.Request) 
 	}
 	respondWithJSON(w, http.StatusOK, response)
 }
+
+func (cfg *apiConfig) handlerChirpsReadByID(w http.ResponseWriter, r *http.Request) {
+	idStr := r.PathValue("id")
+	chirpID, err := uuid.Parse(idStr)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Invalid chirp ID: %v", err), http.StatusBadRequest)
+		return
+	}
+
+	chirp, err := cfg.data.GetChirpByID(r.Context(), chirpID)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Error retrieving chirp: %v", err), http.StatusNotFound)
+		return
+	}
+
+	response := struct {
+		ID        string `json:"id"`
+		Body      string `json:"body"`
+		UserID    string `json:"user_id"`
+		CreatedAt string `json:"created_at"`
+		UpdatedAt string `json:"updated_at"`
+	}{
+		ID:        chirp.ID.String(),
+		Body:      chirp.Content,
+		UserID:    chirp.UserID.String(),
+		CreatedAt: chirp.CreatedAt.String(),
+		UpdatedAt: chirp.UpdatedAt.String(),
+	}
+
+	respondWithJSON(w, http.StatusOK, response)
+}
