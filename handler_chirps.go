@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"go_server/internal/auth"
 	"go_server/internal/database"
 	"net/http"
 
@@ -30,11 +31,19 @@ func (cfg *apiConfig) handlerChirpsCreate(w http.ResponseWriter, r *http.Request
 		"fornax":    {},
 	}
 	cleaned := getCleanedBody(params.Body, badWords)
-	userID, err := uuid.Parse(params.UserID)
-
+	token, err := auth.GetBearerToken(r.Header)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "Invalid authorization header", err)
+		return
+	}
+	ValidatedUserID, err := auth.ValidateJWT(token, cfg.secret_key)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "Invalid token", err)
+		return
+	}
 	chirp, err := cfg.data.CreateChirp(r.Context(), database.CreateChirpParams{
 		Content: cleaned,
-		UserID:  userID,
+		UserID:  ValidatedUserID,
 	})
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Error creating chirp: %v", err), http.StatusInternalServerError)
