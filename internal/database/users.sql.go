@@ -7,7 +7,39 @@ package database
 
 import (
 	"context"
+
+	"github.com/google/uuid"
 )
+
+const createChirp = `-- name: CreateChirp :one
+INSERT INTO chirps (id, created_at, updated_at, user_id, content)
+VALUES (
+    gen_random_uuid(),
+    NOW(),
+    NOW(),
+    $1,
+    $2
+)
+RETURNING id, created_at, updated_at, user_id, content
+`
+
+type CreateChirpParams struct {
+	UserID  uuid.UUID
+	Content string
+}
+
+func (q *Queries) CreateChirp(ctx context.Context, arg CreateChirpParams) (Chirp, error) {
+	row := q.db.QueryRowContext(ctx, createChirp, arg.UserID, arg.Content)
+	var i Chirp
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.UserID,
+		&i.Content,
+	)
+	return i, err
+}
 
 const createUser = `-- name: CreateUser :one
 INSERT INTO users (id, created_at, updated_at, email)
