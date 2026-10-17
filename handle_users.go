@@ -107,3 +107,46 @@ func (cfg *apiConfig) handlerLogin(w http.ResponseWriter, r *http.Request) {
 	}
 	respondWithJSON(w, 200, user)
 }
+
+func (cfg *apiConfig) handleUpdateUser(w http.ResponseWriter, r *http.Request) {
+	decoder := json.NewDecoder(r.Body)
+	var params struct {
+		Password string `json:"password"`
+		Email    string `json:"email"`
+	}
+	err := decoder.Decode(&params)
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "Couldn't decode parameters", err)
+		return
+	}
+	token, err := auth.GetBearerToken(r.Header)
+	if err != nil {
+		respondWithError(w, 401, "Unauthorized", err)
+		return
+	}
+
+	ValidatedUserID, err := auth.ValidateJWT(token, cfg.secret_key)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "Invalid token", err)
+		return
+	}
+	hashed_pass, err := auth.HashPassword(params.Password)
+
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "Could not hush password", err)
+		return
+	}
+
+	response, err := cfg.data.UpdatePassword(r.Context(), database.UpdatePasswordParams{HashedPassword: hashed_pass, Email: params.Email, ID: ValidatedUserID})
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "Invalid email", err)
+		return
+	}
+	result := Response{
+		CreatedAt: response.CreatedAt.String(),
+		UpdatedAt: response.UpdatedAt.String(),
+		Email:     response.Email,
+		ID:        response.ID.String(),
+	}
+	respondWithJSON(w, 200, result)
+}
