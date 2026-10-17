@@ -1,11 +1,2 @@
--- CreateChirp :many
-INSERT INTO chirps (id, created_at, updated_at, user_id, content)
-VALUES (
-    gen_random_uuid(),
-    NOW(),
-    NOW(),
-    $1,
-    $2
-)
-RETURNING *;
-
+-- name: DeleteChirps :exec
+DELETE FROM chirps WHERE id = $1 AND user_id = $2;

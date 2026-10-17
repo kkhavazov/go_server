@@ -132,3 +132,27 @@ func (cfg *apiConfig) handlerChirpsReadByID(w http.ResponseWriter, r *http.Reque
 
 	respondWithJSON(w, http.StatusOK, response)
 }
+
+func (cfg *apiConfig) handlerChirpDelete(w http.ResponseWriter, r *http.Request) {
+	idStr := r.PathValue("chirpID")
+	chirpID, err := uuid.Parse(idStr)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Invalid chirp ID: %v", err), http.StatusBadRequest)
+		return
+	}
+	token, err := auth.GetBearerToken(r.Header)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "Invalid authorization header", err)
+		return
+	}
+	ValidatedUserID, err := auth.ValidateJWT(token, cfg.secret_key)
+	err = cfg.data.DeleteChirps(r.Context(), database.DeleteChirpsParams{
+		ID:     chirpID,
+		UserID: ValidatedUserID,
+	})
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Invalid chirp ID: %v", err), 403)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
