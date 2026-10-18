@@ -70,10 +70,27 @@ func (cfg *apiConfig) handlerChirpsCreate(w http.ResponseWriter, r *http.Request
 }
 
 func (cfg *apiConfig) handlerChirpsRead(w http.ResponseWriter, r *http.Request) {
-	chirps, err := cfg.data.GetChirps(r.Context())
-	if err != nil {
-		http.Error(w, fmt.Sprintf("Error retrieving chirps: %v", err), http.StatusInternalServerError)
-		return
+	var chirps []database.Chirp
+	var err error
+	queryParams := r.URL.Query()
+	author_id := queryParams.Get("author_id")
+	if author_id != "" {
+		parsed_id, err := uuid.Parse(author_id)
+		if err != nil {
+			http.Error(w, fmt.Sprintf("Error converting ID: %v", err), http.StatusInternalServerError)
+			return
+		}
+		chirps, err = cfg.data.GetChirpsByAuthor(r.Context(), parsed_id)
+		if err != nil {
+			http.Error(w, fmt.Sprintf("Error retrieving chirps: %v", err), http.StatusInternalServerError)
+			return
+		}
+	} else {
+		chirps, err = cfg.data.GetChirps(r.Context())
+		if err != nil {
+			http.Error(w, fmt.Sprintf("Error retrieving chirps: %v", err), http.StatusInternalServerError)
+			return
+		}
 	}
 
 	response := make([]struct {

@@ -9,11 +9,12 @@ import (
 )
 
 type Response struct {
-	CreatedAt string `json:"created_at"`
-	UpdatedAt string `json:"updated_at"`
-	Password  string `json:"password"`
-	Email     string `json:"email"`
-	ID        string `json:"id"`
+	CreatedAt   string `json:"created_at"`
+	UpdatedAt   string `json:"updated_at"`
+	Password    string `json:"password"`
+	Email       string `json:"email"`
+	IsChirpyRed bool   `json:"is_chirpy_red"`
+	ID          string `json:"id"`
 }
 type LoginResponse struct {
 	CreatedAt    string `json:"created_at"`
@@ -21,6 +22,7 @@ type LoginResponse struct {
 	Token        string `json:"token"`
 	RefreshToken string `json:"refresh_token"`
 	Email        string `json:"email"`
+	IsChirpyRed  bool   `json:"is_chirpy_red"`
 	ID           string `json:"id"`
 }
 
@@ -46,10 +48,11 @@ func (cfg *apiConfig) handlerUsersCreate(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	response := Response{
-		CreatedAt: user.CreatedAt.String(),
-		UpdatedAt: user.UpdatedAt.String(),
-		Email:     user.Email,
-		ID:        user.ID.String(),
+		CreatedAt:   user.CreatedAt.String(),
+		UpdatedAt:   user.UpdatedAt.String(),
+		Email:       user.Email,
+		IsChirpyRed: user.IsChirpyRed,
+		ID:          user.ID.String(),
 	}
 	respondWithJSON(w, 201, response)
 }
@@ -103,6 +106,7 @@ func (cfg *apiConfig) handlerLogin(w http.ResponseWriter, r *http.Request) {
 		Token:        authToken,
 		RefreshToken: newToken,
 		Email:        response.Email,
+		IsChirpyRed:  response.IsChirpyRed,
 		ID:           response.ID.String(),
 	}
 	respondWithJSON(w, 200, user)
@@ -143,10 +147,11 @@ func (cfg *apiConfig) handleUpdateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	result := Response{
-		CreatedAt: response.CreatedAt.String(),
-		UpdatedAt: response.UpdatedAt.String(),
-		Email:     response.Email,
-		ID:        response.ID.String(),
+		CreatedAt:   response.CreatedAt.String(),
+		UpdatedAt:   response.UpdatedAt.String(),
+		Email:       response.Email,
+		IsChirpyRed: response.IsChirpyRed,
+		ID:          response.ID.String(),
 	}
 	respondWithJSON(w, 200, result)
 }

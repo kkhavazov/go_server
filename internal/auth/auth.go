@@ -68,3 +68,15 @@ func MakeRefreshToken() string {
 	hexed := hex.EncodeToString(key)
 	return hexed
 }
+func GetAPIKey(headers http.Header) (string, error) {
+	authHeader := headers.Get("Authorization")
+	if authHeader == "" {
+		return "", jwt.ErrTokenMalformed
+	}
+	const bearerPrefix = "ApiKey "
+	if !strings.HasPrefix(authHeader, bearerPrefix) {
+		return "", jwt.ErrTokenMalformed
+	}
+	authToken := strings.Replace(authHeader, bearerPrefix, "", 1)
+	return authToken, nil
+}

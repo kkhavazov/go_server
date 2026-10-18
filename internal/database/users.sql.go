@@ -12,6 +12,17 @@ import (
 	"github.com/google/uuid"
 )
 
+const changeToRed = `-- name: ChangeToRed :exec
+UPDATE users
+SET is_chirpy_red = True
+WHERE id = $1
+`
+
+func (q *Queries) ChangeToRed(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.ExecContext(ctx, changeToRed, id)
+	return err
+}
+
 const createChirp = `-- name: CreateChirp :one
 INSERT INTO chirps (id, created_at, updated_at, user_id, content)
 VALUES (
@@ -51,7 +62,7 @@ VALUES (
     $1,
     $2
 )
-RETURNING id, created_at, updated_at, email, hashed_password
+RETURNING id, created_at, updated_at, email, hashed_password, is_chirpy_red
 `
 
 type CreateUserParams struct {
@@ -68,6 +79,7 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		&i.UpdatedAt,
 		&i.Email,
 		&i.HashedPassword,
+		&i.IsChirpyRed,
 	)
 	return i, err
 }
@@ -124,8 +136,43 @@ func (q *Queries) GetChirps(ctx context.Context) ([]Chirp, error) {
 	return items, nil
 }
 
+const getChirpsByAuthor = `-- name: GetChirpsByAuthor :many
+SELECT id, created_at, updated_at, user_id, content FROM chirps
+WHERE user_id = $1
+ORDER BY created_at ASC
+`
+
+func (q *Queries) GetChirpsByAuthor(ctx context.Context, userID uuid.UUID) ([]Chirp, error) {
+	rows, err := q.db.QueryContext(ctx, getChirpsByAuthor, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Chirp
+	for rows.Next() {
+		var i Chirp
+		if err := rows.Scan(
+			&i.ID,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.UserID,
+			&i.Content,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getUserByEmail = `-- name: GetUserByEmail :one
-SELECT id, created_at, updated_at, email, hashed_password FROM users
+SELECT id, created_at, updated_at, email, hashed_password, is_chirpy_red FROM users
 WHERE email = $1
 `
 
@@ -138,6 +185,7 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error
 		&i.UpdatedAt,
 		&i.Email,
 		&i.HashedPassword,
+		&i.IsChirpyRed,
 	)
 	return i, err
 }
@@ -155,7 +203,7 @@ const updatePassword = `-- name: UpdatePassword :one
 UPDATE users 
 SET hashed_password = $1, email = $2
 WHERE id = $3
-RETURNING id, created_at, updated_at, email
+RETURNING id, created_at, updated_at, email, is_chirpy_red
 `
 
 type UpdatePasswordParams struct {
@@ -165,10 +213,11 @@ type UpdatePasswordParams struct {
 }
 
 type UpdatePasswordRow struct {
-	ID        uuid.UUID
-	CreatedAt time.Time
-	UpdatedAt time.Time
-	Email     string
+	ID          uuid.UUID
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+	Email       string
+	IsChirpyRed bool
 }
 
 func (q *Queries) UpdatePassword(ctx context.Context, arg UpdatePasswordParams) (UpdatePasswordRow, error) {
@@ -179,6 +228,7 @@ func (q *Queries) UpdatePassword(ctx context.Context, arg UpdatePasswordParams) 
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.Email,
+		&i.IsChirpyRed,
 	)
 	return i, err
 }
