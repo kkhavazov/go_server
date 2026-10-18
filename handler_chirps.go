@@ -1,11 +1,13 @@
 package main
 
 import (
+	"cmp"
 	"encoding/json"
 	"fmt"
 	"go_server/internal/auth"
 	"go_server/internal/database"
 	"net/http"
+	"slices"
 
 	"github.com/google/uuid"
 )
@@ -74,6 +76,11 @@ func (cfg *apiConfig) handlerChirpsRead(w http.ResponseWriter, r *http.Request) 
 	var err error
 	queryParams := r.URL.Query()
 	author_id := queryParams.Get("author_id")
+	sort := queryParams.Get("sort")
+	sort_type := "asc"
+	if sort == "desc" {
+		sort_type = "desc"
+	}
 	if author_id != "" {
 		parsed_id, err := uuid.Parse(author_id)
 		if err != nil {
@@ -115,6 +122,27 @@ func (cfg *apiConfig) handlerChirpsRead(w http.ResponseWriter, r *http.Request) 
 			CreatedAt: chirp.CreatedAt.String(),
 			UpdatedAt: chirp.UpdatedAt.String(),
 		}
+	}
+	if sort_type == "desc" {
+		slices.SortFunc(response, func(a, b struct {
+			ID        string `json:"id"`
+			Body      string `json:"body"`
+			UserID    string `json:"user_id"`
+			CreatedAt string `json:"created_at"`
+			UpdatedAt string `json:"updated_at"`
+		}) int {
+			return cmp.Compare(b.CreatedAt, a.CreatedAt)
+		})
+	} else {
+		slices.SortFunc(response, func(a, b struct {
+			ID        string `json:"id"`
+			Body      string `json:"body"`
+			UserID    string `json:"user_id"`
+			CreatedAt string `json:"created_at"`
+			UpdatedAt string `json:"updated_at"`
+		}) int {
+			return cmp.Compare(a.CreatedAt, b.CreatedAt)
+		})
 	}
 	respondWithJSON(w, http.StatusOK, response)
 }
